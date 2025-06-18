@@ -47,7 +47,10 @@ wss.on('connection', (ws) => {
       broadcastUserList();
     } else if (parsed.type === 'message') {
       const nickname = users.get(ws) || '익명';
-      const messageToSend = `${nickname}: ${parsed.message}`;
+      const messageToSend = JSON.stringify({
+        type: 'message',
+        message: `${nickname}: ${parsed.message}`,
+      });
       wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
           client.send(messageToSend);
@@ -62,7 +65,6 @@ wss.on('connection', (ws) => {
     console.log('Client disconnected');
   });
 
-  // 혹시 에러 핸들링 추가 (선택)
   ws.on('error', (error) => {
     console.error('WebSocket error:', error);
   });
