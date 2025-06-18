@@ -88,7 +88,8 @@
 
       title.textContent = `${nickname}님, 환영합니다!`;
 
-      const ws = new WebSocket(`ws://${location.host}`);
+      const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+      const ws = new WebSocket(`${protocol}://${location.host}`);
 
       ws.onopen = () => {
         ws.send(JSON.stringify({ type: 'join', nickname }));

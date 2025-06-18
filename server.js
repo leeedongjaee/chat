@@ -1,5 +1,3 @@
-console.log('서버 시작');
-
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -7,7 +5,9 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+
+// noServer: true 옵션 사용해서 직접 업그레이드 처리
+const wss = new WebSocket.Server({ noServer: true });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -23,6 +23,13 @@ function broadcastUserList() {
     }
   });
 }
+
+// WebSocket 연결 업그레이드 요청 처리
+server.on('upgrade', (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.emit('connection', ws, request);
+  });
+});
 
 wss.on('connection', (ws) => {
   console.log('New client connected');
@@ -60,5 +67,3 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
 });
-
-console.log('서버 스크립트 끝');
