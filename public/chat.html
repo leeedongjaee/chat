@@ -6,34 +6,48 @@
     <style>
       body {
         font-family: Arial, sans-serif;
-        margin: 30px;
+        margin: 0;
+        padding: 20px;
         display: flex;
-        gap: 20px;
+        height: 100vh;
+        box-sizing: border-box;
         background-color: #ffffff;
         color: #000;
-        transition: background-color 0.3s, color 0.3s;
       }
 
       #left {
         flex: 3;
+        display: flex;
+        flex-direction: column;
+        margin-right: 20px;
       }
 
       #right {
         flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #userTitle {
+        font-size: 20px;
+        margin-bottom: 10px;
       }
 
       #chat {
-        width: 100%;
-        height: 500px;
+        flex: 1;
         border: 1px solid #ccc;
         padding: 10px;
-        overflow-y: scroll;
-        margin-bottom: 15px;
+        overflow-y: auto;
         background-color: #f9f9f9;
+        margin-bottom: 10px;
+      }
+
+      #messageForm {
+        display: flex;
       }
 
       #messageInput {
-        width: 78%;
+        flex: 1;
         height: 40px;
         font-size: 16px;
         padding: 5px;
@@ -47,78 +61,61 @@
         cursor: pointer;
       }
 
-      #userList {
+      #fileInput {
+        margin-top: 10px;
+      }
+
+      #userList,
+      #fileList {
         border: 1px solid #aaa;
-        padding: 10px;
         background: #f1f1f1;
-        height: 500px;
+        padding: 10px;
+        margin-bottom: 10px;
         overflow-y: auto;
       }
 
-      #userList h3 {
-        margin-top: 0;
+      #userList {
+        height: 150px;
       }
 
-      .user-item {
+      #fileList {
+        flex: 1;
+      }
+
+      .chat-image {
+        max-width: 200px;
+        display: block;
+        margin-top: 5px;
+      }
+
+      .file-item {
         margin-bottom: 5px;
-      }
-
-      /* 다크모드 스타일 */
-      body.dark-mode {
-        background-color: #1e1e1e;
-        color: #eee;
-      }
-
-      body.dark-mode #chat {
-        background-color: #2c2c2c;
-        border-color: #555;
-      }
-
-      body.dark-mode #userList {
-        background-color: #2c2c2c;
-        border-color: #555;
-      }
-
-      body.dark-mode input,
-      body.dark-mode button {
-        background-color: #444;
-        color: #fff;
-        border: 1px solid #666;
-      }
-
-      #darkModeToggle {
-        position: absolute;
-        top: 20px;
-        right: 30px;
-        padding: 8px 12px;
-        font-size: 14px;
-        cursor: pointer;
-        background-color: #eee;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-      }
-
-      body.dark-mode #darkModeToggle {
-        background-color: #555;
-        color: #fff;
-        border-color: #888;
       }
     </style>
   </head>
   <body>
-    <button id="darkModeToggle">🌙 다크모드</button>
-
     <div id="left">
-      <h2 id="userTitle">채팅방</h2>
+      <h2 id="userTitle"></h2>
       <div id="chat"></div>
-      <input type="text" id="messageInput" placeholder="메시지를 입력하세요" />
-      <button id="sendBtn">전송</button>
+      <form id="messageForm" onsubmit="return false;">
+        <input
+          type="text"
+          id="messageInput"
+          placeholder="메시지를 입력하세요"
+        />
+        <button id="sendBtn">전송</button>
+      </form>
+      <input type="file" id="fileInput" />
     </div>
 
     <div id="right">
       <div id="userList">
         <h3>접속자 목록</h3>
         <ul id="users"></ul>
+      </div>
+      <div id="fileList">
+        <h3>업로드된 파일</h3>
+        <ul id="files"></ul>
       </div>
     </div>
 
@@ -129,9 +126,10 @@
       const chat = document.getElementById('chat');
       const input = document.getElementById('messageInput');
       const sendBtn = document.getElementById('sendBtn');
+      const fileInput = document.getElementById('fileInput');
       const title = document.getElementById('userTitle');
       const usersUl = document.getElementById('users');
-      const darkToggle = document.getElementById('darkModeToggle');
+      const filesUl = document.getElementById('files');
 
       title.textContent = `${nickname}님, 환영합니다!`;
 
@@ -150,7 +148,6 @@
             usersUl.innerHTML = '';
             data.users.forEach((user) => {
               const li = document.createElement('li');
-              li.className = 'user-item';
               li.textContent = user;
               usersUl.appendChild(li);
             });
@@ -158,41 +155,70 @@
             const div = document.createElement('div');
             div.textContent = `${data.from}: ${data.message}`;
             chat.appendChild(div);
-            chat.scrollTop = chat.scrollHeight;
+          } else if (data.type === 'file') {
+            const isImage = /\.(jpg|jpeg|png|gif)$/i.test(data.filename);
+            const div = document.createElement('div');
+            div.innerHTML = `<strong>${data.from}:</strong>`;
+            if (isImage) {
+              const img = document.createElement('img');
+              img.src = `/uploads/${data.filename}`;
+              img.className = 'chat-image';
+              div.appendChild(img);
+            } else {
+              const link = document.createElement('a');
+              link.href = `/uploads/${data.filename}`;
+              link.target = '_blank';
+              link.textContent = data.originalname;
+              div.appendChild(link);
+            }
+            chat.appendChild(div);
+
+            // 파일 목록에도 추가
+            const fileLi = document.createElement('li');
+            fileLi.className = 'file-item';
+            const fileLink = document.createElement('a');
+            fileLink.href = `/uploads/${data.filename}`;
+            fileLink.target = '_blank';
+            fileLink.textContent = `${data.from}: ${data.originalname}`;
+            fileLi.appendChild(fileLink);
+            filesUl.appendChild(fileLi);
           }
+
+          chat.scrollTop = chat.scrollHeight;
         } catch (e) {
           console.error('메시지 처리 오류:', e);
         }
       };
 
-      function sendMessage() {
+      sendBtn.addEventListener('click', () => {
         const message = input.value.trim();
         if (message !== '') {
           ws.send(JSON.stringify({ type: 'message', message }));
           input.value = '';
         }
-      }
+      });
 
-      sendBtn.addEventListener('click', sendMessage);
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
-          sendMessage();
+          e.preventDefault();
+          sendBtn.click();
         }
       });
 
-      // 다크모드 초기 상태 적용
-      const savedMode = localStorage.getItem('theme');
-      if (savedMode === 'dark') {
-        document.body.classList.add('dark-mode');
-        darkToggle.textContent = '☀️ 라이트모드';
-      }
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0];
+        if (!file) return;
 
-      // 다크모드 토글
-      darkToggle.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        const isDark = document.body.classList.contains('dark-mode');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        darkToggle.textContent = isDark ? '☀️ 라이트모드' : '🌙 다크모드';
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('nickname', nickname);
+
+        fetch('/upload', {
+          method: 'POST',
+          body: formData,
+        }).then(() => {
+          fileInput.value = '';
+        });
       });
     </script>
   </body>
