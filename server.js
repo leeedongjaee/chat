@@ -6,7 +6,7 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 
-// noServer: true 옵션 사용해서 직접 업그레이드 처리
+// WebSocket 서버는 noServer 모드로 생성 (upgrade 이벤트 직접 처리)
 const wss = new WebSocket.Server({ noServer: true });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -24,7 +24,6 @@ function broadcastUserList() {
   });
 }
 
-// WebSocket 연결 업그레이드 요청 처리
 server.on('upgrade', (request, socket, head) => {
   wss.handleUpgrade(request, socket, head, (ws) => {
     wss.emit('connection', ws, request);
@@ -47,7 +46,8 @@ wss.on('connection', (ws) => {
       users.set(ws, parsed.nickname);
       broadcastUserList();
     } else if (parsed.type === 'message') {
-      const messageToSend = `${users.get(ws)}: ${parsed.message}`;
+      const nickname = users.get(ws) || '익명';
+      const messageToSend = `${nickname}: ${parsed.message}`;
       wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
           client.send(messageToSend);
@@ -60,6 +60,11 @@ wss.on('connection', (ws) => {
     users.delete(ws);
     broadcastUserList();
     console.log('Client disconnected');
+  });
+
+  // 혹시 에러 핸들링 추가 (선택)
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
   });
 });
 
