@@ -5,8 +5,6 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-
-// WebSocket 서버는 noServer 모드로 생성 (upgrade 이벤트 직접 처리)
 const wss = new WebSocket.Server({ noServer: true });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -47,10 +45,13 @@ wss.on('connection', (ws) => {
       broadcastUserList();
     } else if (parsed.type === 'message') {
       const nickname = users.get(ws) || '익명';
+      // 수정
       const messageToSend = JSON.stringify({
         type: 'message',
-        message: `${nickname}: ${parsed.message}`,
+        from: nickname,
+        message: parsed.message,
       });
+
       wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
           client.send(messageToSend);

@@ -9,6 +9,9 @@
         margin: 30px;
         display: flex;
         gap: 20px;
+        background-color: #ffffff;
+        color: #000;
+        transition: background-color 0.3s, color 0.3s;
       }
 
       #left {
@@ -59,9 +62,52 @@
       .user-item {
         margin-bottom: 5px;
       }
+
+      /* 다크모드 스타일 */
+      body.dark-mode {
+        background-color: #1e1e1e;
+        color: #eee;
+      }
+
+      body.dark-mode #chat {
+        background-color: #2c2c2c;
+        border-color: #555;
+      }
+
+      body.dark-mode #userList {
+        background-color: #2c2c2c;
+        border-color: #555;
+      }
+
+      body.dark-mode input,
+      body.dark-mode button {
+        background-color: #444;
+        color: #fff;
+        border: 1px solid #666;
+      }
+
+      #darkModeToggle {
+        position: absolute;
+        top: 20px;
+        right: 30px;
+        padding: 8px 12px;
+        font-size: 14px;
+        cursor: pointer;
+        background-color: #eee;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+
+      body.dark-mode #darkModeToggle {
+        background-color: #555;
+        color: #fff;
+        border-color: #888;
+      }
     </style>
   </head>
   <body>
+    <button id="darkModeToggle">🌙 다크모드</button>
+
     <div id="left">
       <h2 id="userTitle">채팅방</h2>
       <div id="chat"></div>
@@ -77,8 +123,6 @@
     </div>
 
     <script>
-      console.log(location.protocol);
-
       const params = new URLSearchParams(window.location.search);
       const nickname = params.get('nickname') || '익명';
 
@@ -87,6 +131,7 @@
       const sendBtn = document.getElementById('sendBtn');
       const title = document.getElementById('userTitle');
       const usersUl = document.getElementById('users');
+      const darkToggle = document.getElementById('darkModeToggle');
 
       title.textContent = `${nickname}님, 환영합니다!`;
 
@@ -100,6 +145,7 @@
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+
           if (data.type === 'userList') {
             usersUl.innerHTML = '';
             data.users.forEach((user) => {
@@ -108,15 +154,14 @@
               li.textContent = user;
               usersUl.appendChild(li);
             });
-          } else {
-            throw new Error();
+          } else if (data.type === 'message') {
+            const div = document.createElement('div');
+            div.textContent = `${data.from}: ${data.message}`;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
           }
-        } catch {
-          // 일반 채팅 메시지
-          const div = document.createElement('div');
-          div.textContent = event.data;
-          chat.appendChild(div);
-          chat.scrollTop = chat.scrollHeight;
+        } catch (e) {
+          console.error('메시지 처리 오류:', e);
         }
       };
 
@@ -133,6 +178,21 @@
         if (e.key === 'Enter') {
           sendMessage();
         }
+      });
+
+      // 다크모드 초기 상태 적용
+      const savedMode = localStorage.getItem('theme');
+      if (savedMode === 'dark') {
+        document.body.classList.add('dark-mode');
+        darkToggle.textContent = '☀️ 라이트모드';
+      }
+
+      // 다크모드 토글
+      darkToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        darkToggle.textContent = isDark ? '☀️ 라이트모드' : '🌙 다크모드';
       });
     </script>
   </body>
