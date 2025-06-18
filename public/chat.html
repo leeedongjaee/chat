@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>채팅방</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 30px;
+        display: flex;
+        gap: 20px;
+      }
+
+      #left {
+        flex: 3;
+      }
+
+      #right {
+        flex: 1;
+      }
+
+      #chat {
+        width: 100%;
+        height: 500px;
+        border: 1px solid #ccc;
+        padding: 10px;
+        overflow-y: scroll;
+        margin-bottom: 15px;
+        background-color: #f9f9f9;
+      }
+
+      #messageInput {
+        width: 78%;
+        height: 40px;
+        font-size: 16px;
+        padding: 5px;
+      }
+
+      #sendBtn {
+        height: 40px;
+        font-size: 16px;
+        padding: 0 20px;
+        margin-left: 10px;
+        cursor: pointer;
+      }
+
+      #userList {
+        border: 1px solid #aaa;
+        padding: 10px;
+        background: #f1f1f1;
+        height: 500px;
+        overflow-y: auto;
+      }
+
+      #userList h3 {
+        margin-top: 0;
+      }
+
+      .user-item {
+        margin-bottom: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="left">
+      <h2 id="userTitle">채팅방</h2>
+      <div id="chat"></div>
+      <input type="text" id="messageInput" placeholder="메시지를 입력하세요" />
+      <button id="sendBtn">전송</button>
+    </div>
+
+    <div id="right">
+      <div id="userList">
+        <h3>접속자 목록</h3>
+        <ul id="users"></ul>
+      </div>
+    </div>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const nickname = params.get('nickname') || '익명';
+
+      const chat = document.getElementById('chat');
+      const input = document.getElementById('messageInput');
+      const sendBtn = document.getElementById('sendBtn');
+      const title = document.getElementById('userTitle');
+      const usersUl = document.getElementById('users');
+
+      title.textContent = `${nickname}님, 환영합니다!`;
+
+      const ws = new WebSocket(`ws://${location.host}`);
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: 'join', nickname }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'userList') {
+            usersUl.innerHTML = '';
+            data.users.forEach((user) => {
+              const li = document.createElement('li');
+              li.className = 'user-item';
+              li.textContent = user;
+              usersUl.appendChild(li);
+            });
+          } else {
+            throw new Error();
+          }
+        } catch {
+          // 일반 채팅 메시지
+          const div = document.createElement('div');
+          div.textContent = event.data;
+          chat.appendChild(div);
+          chat.scrollTop = chat.scrollHeight;
+        }
+      };
+
+      function sendMessage() {
+        const message = input.value.trim();
+        if (message !== '') {
+          ws.send(JSON.stringify({ type: 'message', message }));
+          input.value = '';
+        }
+      }
+
+      sendBtn.addEventListener('click', sendMessage);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          sendMessage();
+        }
+      });
+    </script>
+  </body>
+</html>

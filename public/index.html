@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>닉네임 입력</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 50px;
+        text-align: center;
+      }
+      input {
+        font-size: 18px;
+        padding: 10px;
+        width: 250px;
+      }
+      button {
+        font-size: 18px;
+        padding: 10px 20px;
+        margin-left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>채팅에 참여하기</h2>
+    <input type="text" id="nickname" placeholder="닉네임을 입력하세요" />
+    <button onclick="enterChat()">입장</button>
+
+    <script>
+      function enterChat() {
+        const nickname = document.getElementById('nickname').value.trim();
+        if (!nickname) {
+          alert('닉네임을 입력해주세요!');
+          return;
+        }
+        // 쿼리스트링으로 닉네임 전달
+        window.location.href =
+          '/chat.html?nickname=' + encodeURIComponent(nickname);
+      }
+    </script>
+  </body>
+</html>
