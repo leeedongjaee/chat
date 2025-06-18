@@ -77,6 +77,8 @@
     </div>
 
     <script>
+      console.log(location.protocol);
+
       const params = new URLSearchParams(window.location.search);
       const nickname = params.get('nickname') || '익명';
 
