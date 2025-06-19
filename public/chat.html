@@ -135,6 +135,13 @@
     </style>
   </head>
   <body>
+    <button
+      id="darkModeToggle"
+      style="position: fixed; top: 10px; right: 10px; z-index: 1000"
+    >
+      🦇다크모드
+    </button>
+
     <div id="left">
       <h2 id="userTitle"></h2>
       <div id="chat"></div>
@@ -149,7 +156,6 @@
         <div id="emojiPanel"></div>
       </form>
       <input type="file" id="fileInput" />
-      <!-- 숨긴 이모티콘 전용 파일 입력 -->
       <input
         type="file"
         id="emojiFileInput"
@@ -183,6 +189,16 @@
       const filesUl = document.getElementById('files');
       const emojiBtn = document.getElementById('emojiBtn');
       const emojiPanel = document.getElementById('emojiPanel');
+
+      let isComposing = false;
+
+      input.addEventListener('compositionstart', () => {
+        isComposing = true;
+      });
+
+      input.addEventListener('compositionend', () => {
+        isComposing = false;
+      });
 
       let customEmojis = [];
       let emojiVisible = false;
@@ -262,7 +278,7 @@
       });
 
       input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !isComposing) {
           e.preventDefault();
           sendBtn.click();
         }
@@ -320,8 +336,6 @@
           img.src = dataUrl;
           img.className = 'emoji-image';
           img.onclick = () => {
-            // 클릭 시 메시지 입력창에 이모티콘 이미지 태그 삽입
-            // 또는 ws로 직접 전송 (현재 ws 전송 방식)
             ws.send(JSON.stringify({ type: 'emoji', from: nickname, dataUrl }));
             emojiPanel.style.display = 'none';
             emojiVisible = false;
@@ -329,6 +343,20 @@
           emojiPanel.appendChild(img);
         });
       }
+
+      const darkModeToggle = document.getElementById('darkModeToggle');
+      const savedMode = localStorage.getItem('darkMode');
+      if (savedMode === 'on') {
+        document.body.classList.add('dark-mode');
+      }
+      darkModeToggle.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        if (document.body.classList.contains('dark-mode')) {
+          localStorage.setItem('darkMode', 'on');
+        } else {
+          localStorage.setItem('darkMode', 'off');
+        }
+      });
     </script>
   </body>
 </html>
