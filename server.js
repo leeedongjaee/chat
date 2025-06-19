@@ -23,6 +23,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 app.use(express.static(path.join(__dirname, 'public')));
+
 app.post('/upload', upload.single('file'), (req, res) => {
   const { originalname, filename } = req.file;
   const from = req.body.nickname || '익명';
@@ -44,6 +45,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
 });
 
 const users = new Map();
+
 function broadcastUserList() {
   const nicknames = [...users.values()];
   const message = JSON.stringify({ type: 'userList', users: nicknames });
@@ -62,6 +64,7 @@ server.on('upgrade', (request, socket, head) => {
 
 wss.on('connection', (ws) => {
   console.log('New client connected');
+
   ws.on('message', (data) => {
     let parsed;
     try {
@@ -80,9 +83,23 @@ wss.on('connection', (ws) => {
         from: nickname,
         message: parsed.message,
       });
+
       wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
           client.send(messageToSend);
+        }
+      });
+    } else if (parsed.type === 'emoji') {
+      const nickname = users.get(ws) || parsed.from || '익명';
+      const emojiMessage = JSON.stringify({
+        type: 'emoji',
+        from: nickname,
+        dataUrl: parsed.dataUrl,
+      });
+
+      wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(emojiMessage);
         }
       });
     }

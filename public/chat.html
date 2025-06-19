@@ -13,7 +13,11 @@
         box-sizing: border-box;
         background-color: #ffffff;
         color: #000;
-        transition: background-color 0.3s, color 0.3s;
+      }
+
+      body.dark-mode {
+        background-color: #1e1e1e;
+        color: #eee;
       }
 
       #left {
@@ -43,8 +47,15 @@
         margin-bottom: 10px;
       }
 
+      body.dark-mode #chat {
+        background-color: #2c2c2c;
+        border-color: #555;
+      }
+
       #messageForm {
         display: flex;
+        position: relative;
+        align-items: center;
       }
 
       #messageInput {
@@ -60,6 +71,35 @@
         padding: 0 20px;
         margin-left: 10px;
         cursor: pointer;
+      }
+
+      #emojiBtn {
+        height: 40px;
+        width: 40px;
+        cursor: pointer;
+        margin-left: 10px;
+      }
+
+      #emojiPanel {
+        display: none;
+        flex-wrap: wrap;
+        gap: 5px;
+        position: absolute;
+        bottom: 50px;
+        left: 0;
+        background: #fff;
+        border: 1px solid #ccc;
+        padding: 5px;
+        max-height: 150px;
+        overflow-y: auto;
+        z-index: 10;
+      }
+
+      .emoji-image {
+        width: 40px;
+        height: 40px;
+        cursor: pointer;
+        margin: 2px;
       }
 
       #fileInput {
@@ -92,51 +132,9 @@
       .file-item {
         margin-bottom: 5px;
       }
-
-      #darkModeToggle {
-        position: fixed;
-        top: 10px;
-        right: 20px;
-        padding: 8px 12px;
-        font-size: 14px;
-        cursor: pointer;
-        background-color: #eee;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        z-index: 1000;
-      }
-
-      /* 다크모드 */
-      body.dark-mode {
-        background-color: #1e1e1e;
-        color: #eee;
-      }
-
-      body.dark-mode #chat,
-      body.dark-mode #userList,
-      body.dark-mode #fileList {
-        background-color: #2c2c2c;
-        border-color: #555;
-      }
-
-      body.dark-mode #messageInput,
-      body.dark-mode #sendBtn,
-      body.dark-mode #fileInput {
-        background-color: #444;
-        color: #fff;
-        border: 1px solid #666;
-      }
-
-      body.dark-mode #darkModeToggle {
-        background-color: #555;
-        color: #fff;
-        border-color: #888;
-      }
     </style>
   </head>
   <body>
-    <button id="darkModeToggle">🌙 다크모드</button>
-
     <div id="left">
       <h2 id="userTitle"></h2>
       <div id="chat"></div>
@@ -146,9 +144,18 @@
           id="messageInput"
           placeholder="메시지를 입력하세요"
         />
+        <button type="button" id="emojiBtn">+</button>
         <button id="sendBtn">전송</button>
+        <div id="emojiPanel"></div>
       </form>
       <input type="file" id="fileInput" />
+      <!-- 숨긴 이모티콘 전용 파일 입력 -->
+      <input
+        type="file"
+        id="emojiFileInput"
+        accept="image/*"
+        style="display: none"
+      />
     </div>
 
     <div id="right">
@@ -170,10 +177,15 @@
       const input = document.getElementById('messageInput');
       const sendBtn = document.getElementById('sendBtn');
       const fileInput = document.getElementById('fileInput');
+      const emojiFileInput = document.getElementById('emojiFileInput');
       const title = document.getElementById('userTitle');
       const usersUl = document.getElementById('users');
       const filesUl = document.getElementById('files');
-      const darkToggle = document.getElementById('darkModeToggle');
+      const emojiBtn = document.getElementById('emojiBtn');
+      const emojiPanel = document.getElementById('emojiPanel');
+
+      let customEmojis = [];
+      let emojiVisible = false;
 
       title.textContent = `${nickname}님, 환영합니다!`;
 
@@ -225,6 +237,14 @@
             fileLink.textContent = `${data.from}: ${data.originalname}`;
             fileLi.appendChild(fileLink);
             filesUl.appendChild(fileLi);
+          } else if (data.type === 'emoji') {
+            const div = document.createElement('div');
+            div.innerHTML = `<strong>${data.from}:</strong>`;
+            const img = document.createElement('img');
+            img.src = data.dataUrl;
+            img.className = 'chat-image';
+            div.appendChild(img);
+            chat.appendChild(div);
           }
 
           chat.scrollTop = chat.scrollHeight;
@@ -236,7 +256,7 @@
       sendBtn.addEventListener('click', () => {
         const message = input.value.trim();
         if (message !== '') {
-          ws.send(JSON.stringify({ type: 'message', message }));
+          ws.send(JSON.stringify({ type: 'message', from: nickname, message }));
           input.value = '';
         }
       });
@@ -264,18 +284,51 @@
         });
       });
 
-      const savedTheme = localStorage.getItem('theme');
-      if (savedTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-        darkToggle.textContent = '☀️ 라이트모드';
-      }
-
-      darkToggle.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        const isDark = document.body.classList.contains('dark-mode');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        darkToggle.textContent = isDark ? '☀️ 라이트모드' : '🌙 다크모드';
+      emojiBtn.addEventListener('click', () => {
+        emojiVisible = !emojiVisible;
+        emojiPanel.style.display = emojiVisible ? 'flex' : 'none';
+        if (emojiVisible) renderEmojiPanel();
       });
+
+      emojiFileInput.addEventListener('change', () => {
+        const file = emojiFileInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          customEmojis.push(reader.result);
+          renderEmojiPanel();
+        };
+        reader.readAsDataURL(file);
+      });
+
+      function renderEmojiPanel() {
+        emojiPanel.innerHTML = '';
+
+        const addEmojiBtn = document.createElement('button');
+        addEmojiBtn.textContent = '+ 이모티콘 추가';
+        addEmojiBtn.type = 'button';
+        addEmojiBtn.onclick = () => {
+          emojiFileInput.value = ''; // 초기화
+          emojiFileInput.click();
+        };
+
+        emojiPanel.appendChild(addEmojiBtn);
+
+        customEmojis.forEach((dataUrl) => {
+          const img = document.createElement('img');
+          img.src = dataUrl;
+          img.className = 'emoji-image';
+          img.onclick = () => {
+            // 클릭 시 메시지 입력창에 이모티콘 이미지 태그 삽입
+            // 또는 ws로 직접 전송 (현재 ws 전송 방식)
+            ws.send(JSON.stringify({ type: 'emoji', from: nickname, dataUrl }));
+            emojiPanel.style.display = 'none';
+            emojiVisible = false;
+          };
+          emojiPanel.appendChild(img);
+        });
+      }
     </script>
   </body>
 </html>
